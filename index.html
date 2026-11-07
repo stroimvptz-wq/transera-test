@@ -27,6 +27,21 @@ function tripsPage(){let list=trips.filter(t=>(statusFilter==='Все'||t.status
 function dashboard(){const completed=trips.filter(t=>t.status==='Выполнен'),active=trips.filter(t=>t.status==='В пути'||t.status==='Запланирован');const sums=trips.reduce((a,t)=>{const c=calc(t);a.revenue+=c.price;a.cost+=t.actualCost===''?c.cost:num(t.actualCost);return a;},{revenue:0,cost:0});const values=[['Всего рейсов',trips.length],['Активных рейсов',active.length],['Выручка',money(sums.revenue)],['Прибыль',money(sums.revenue-sums.cost)]];const max=Math.max(1,sums.revenue,sums.cost);return '<div class="top"><div><h1>Главная</h1><p class="muted">Управление перевозками и результатами</p></div><button class="btn" data-action="blank-trip">+ Создать рейс</button></div><div class="grid">'+values.map(([l,v])=>'<div class="card"><div class="muted">'+l+'</div><div class="value">'+v+'</div></div>').join('')+'</div><div class="two"><div class="card"><h2>Финансовые показатели</h2><div class="line"><span>Себестоимость</span><strong>'+money(sums.cost)+'</strong></div><div class="line"><span>Выполнено рейсов</span><strong>'+completed.length+'</strong></div><div class="line"><span>Убыточных рейсов</span><strong>'+trips.filter(t=>calc(t).profit<0).length+'</strong></div><div class="chart"><div class="bar" style="height:'+Math.max(2,sums.revenue/max*100)+'%"><span>Выручка</span></div><div class="bar alt" style="height:'+Math.max(2,sums.cost/max*100)+'%"><span>Расходы</span></div></div></div><div class="card"><h2>Последние рейсы</h2>'+(trips.length?trips.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,5).map(t=>'<div class="line"><span>'+esc(t.from)+' — '+esc(t.to)+'</span><strong>'+money(calc(t).profit)+'</strong></div>').join(''):'<p class="muted">Добавьте первый рейс, чтобы увидеть статистику.</p>')+'</div></div><div class="card section"><h2>Резервное копирование</h2><p class="muted">Данные доступны только в этом браузере. Экспортируйте резервную копию регулярно.</p><div class="actions"><button class="btn secondary" data-action="export">Экспорт JSON</button><label class="btn secondary" style="cursor:pointer">Импорт JSON<input id="import-file" type="file" accept=".json,application/json" style="display:none"></label></div></div>';}
 function render(){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.page===page));document.getElementById('content').innerHTML=page==='dashboard'?dashboard():page==='calculators'?calculators():tripsPage();}
 function setPage(p){page=p;render();}
+// Numeric keypad: append new digits at the right edge regardless of browser caret position.
+document.addEventListener('keydown',e=>{
+ const el=e.target;
+ if(!el.matches || !el.matches('input[data-numeric]') || e.ctrlKey || e.metaKey || e.altKey || e.isComposing)return;
+ const k=e.key;
+ if(!/^\\d$/.test(k) && k!=='.' && k!==',' && k!=='Backspace')return;
+ e.preventDefault();
+ let v=el.value;
+ if(k==='Backspace')v=v.slice(0,-1);
+ else if(k==='.'||k===','){if(!v.includes('.'))v=(v||'0')+'.';}
+ else v=(v==='0'?k:v+k);
+ el.value=v;
+ el.dispatchEvent(new Event('input',{bubbles:true}));
+ el.setSelectionRange(el.value.length,el.value.length);
+});
 document.addEventListener('input',e=>{const k=e.target.dataset.field;if(k){if(e.target.dataset.numeric){const cleaned=e.target.value.replace(/[^\d.,]/g,'').replace(',','.').replace(/^0+(?=\d)/,'');if(cleaned!==e.target.value)e.target.value=cleaned;try{e.target.setSelectionRange(e.target.value.length,e.target.value.length)}catch{}}draft[k]=e.target.value;if(k==='manualPrice'&&draft[k]!==''&&!/^\d*\.?\d*$/.test(draft[k]))return;const live=document.getElementById('live-results');if(live)live.outerHTML=results();}if(e.target.id==='trip-search'){search=e.target.value;const pos=e.target.selectionStart;render();const n=document.getElementById('trip-search');if(n){n.focus();n.setSelectionRange(pos,pos);}}});
 document.addEventListener('focusin',e=>{if(e.target.dataset.numeric){try{e.target.setSelectionRange(e.target.value.length,e.target.value.length)}catch{}}});
 document.addEventListener('change',e=>{if(e.target.dataset.field&&e.target.tagName==='SELECT'){draft[e.target.dataset.field]=e.target.value;render();}if(e.target.id==='status-filter'){statusFilter=e.target.value;render();}if(e.target.id==='import-file'&&e.target.files[0])importJSON(e.target.files[0]);});
