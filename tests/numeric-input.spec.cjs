@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 test('digits append to the right in all calculator number fields', async ({ page }) => {
   await page.goto('/');
-  await page.getByText('Калькуляторы', {exact:true}).first().click();
+  await page.locator('[data-page="calculators"]').click();
   for (const key of ['distance','rate','markup','extraCharge']) {
     const field=page.locator('[data-field="'+key+'"]');
     await field.fill('');
@@ -13,7 +13,7 @@ test('digits append to the right in all calculator number fields', async ({ page
 });
 test('calculation updates without changing focus or reversing input', async ({ page }) => {
  await page.goto('/');
- await page.getByText('Калькуляторы', {exact:true}).first().click();
+ await page.locator('[data-page="calculators"]').click();
  const distance=page.locator('[data-field="distance"]');
  await distance.fill('');
  await distance.pressSequentially('1000');
