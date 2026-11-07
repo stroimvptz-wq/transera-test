@@ -19,7 +19,7 @@ function showLandingTab(tab){
   document.getElementById('landing-error').textContent='';
 }
 async function apiRequest(path,body,token){
- const res=await fetch(API_URL+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});
+ const res=await fetch(API_URL+'?route='+encodeURIComponent(path),{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});
  const data=await res.json().catch(()=>({}));
  if(!res.ok)throw Error(data.error||'Ошибка сервера ('+res.status+')');
  return data;
