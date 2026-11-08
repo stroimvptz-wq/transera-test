@@ -87,6 +87,23 @@ function localPut(name,item){return new Promise((res,rej)=>{const r=store(name,'
 function localDel(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
 function localGet(name,id){return new Promise((res,rej)=>{const r=store(name).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 let syncRunning=false;
+let syncError='';
+function showSyncStatus(){
+ let panel=document.getElementById('transera-sync-status');
+ if(!panel){
+  panel=document.createElement('div');panel.id='transera-sync-status';
+  panel.style.cssText='position:fixed;bottom:12px;right:12px;z-index:9999;max-width:min(370px,calc(100vw - 24px));background:#14253d;color:#fff;border:1px solid #3b7190;border-radius:10px;padding:10px 12px;font:13px/1.5 system-ui,sans-serif;box-shadow:0 3px 16px #0005';
+  document.body.appendChild(panel);
+ }
+ if(!syncAccount()||!syncToken()){panel.hidden=true;return;}
+ panel.hidden=false;
+ const pending=syncRead('queue').length;
+ panel.textContent=syncError?'Синхронизация: '+syncError:(pending?'Ожидают отправки: '+pending:'Синхронизация: проверка завершена');
+ const btn=document.createElement('button');btn.type='button';btn.textContent='Проверить снова';btn.style.cssText='display:block;margin-top:6px;padding:5px 9px;cursor:pointer';
+ btn.onclick=async()=>{syncError='';panel.textContent='Проверяю соединение…';await syncDownload();showSyncStatus();};
+ panel.appendChild(btn);
+}
+
 function syncEnqueue(name,id,action,item){
  if(!syncAccount()||!syncToken())return;
  const queue=syncRead('queue').filter(x=>!(x.name===name&&x.id===id));
@@ -116,8 +133,8 @@ async function syncNow(){
    if(account!==syncAccount())break;
    syncWrite('queue',syncRead('queue').filter(x=>x.nonce!==entry.nonce));
   }
- }catch(e){console.warn('Cloud synchronization postponed; browser data retained',e);}
- finally{syncRunning=false;}
+ }catch(e){syncError='Отправка: '+(e?.message||String(e));showSyncStatus();console.warn('Cloud synchronization postponed; browser data retained',e);}
+ finally{syncRunning=false;showSyncStatus();}
 }
 async function syncDownload(){
  if(!db||!syncAccount()||!syncToken()||!navigator.onLine)return;
@@ -126,10 +143,10 @@ async function syncDownload(){
  for(const name of ['trips','calculations']){
   let response;
   try{response=await apiRequest('/'+name+'/list',null,token);}
-  catch(e){console.warn('Cloud list unavailable',e);return;}
+  catch(e){syncError='Загрузка: '+(e?.message||String(e));showSyncStatus();console.warn('Cloud list unavailable',e);return;}
   if(account!==syncAccount()||token!==syncToken())return;
-  const items=Array.isArray(response)?response:response?.items??response?.[name]??response?.data;
-  if(!Array.isArray(items)){console.warn('Unexpected cloud list response',name);return;}
+  const items=Array.isArray(response)?response:response?.items??response?.[name]??response?.records??response?.data;
+  if(!Array.isArray(items)){syncError='Сервер вернул неожиданный формат списка '+name;showSyncStatus();console.warn('Unexpected cloud list response',name,response);return;}
   const pending=new Set(syncRead('queue').filter(x=>x.name===name).map(x=>x.id));
   for(const item of items){
    if(!item||typeof item.id!=='string'||pending.has(item.id))continue;
@@ -138,7 +155,7 @@ async function syncDownload(){
    if(!previous){await localPut(name,item);markSynced(name,item.id);}
   }
  }
- await refresh();
+ await refresh();showSyncStatus();
 }
 window.addEventListener('online',()=>{void syncDownload();});
 async function refresh(){trips=await all('trips');calculations=await all('calculations');render();}
