@@ -96,9 +96,11 @@ function showSyncStatus(){
   document.body.appendChild(panel);
  }
  if(!syncAccount()||!syncToken()){panel.hidden=true;return;}
- panel.hidden=false;
  const pending=syncRead('queue').length;
- panel.textContent=syncError?'Синхронизация: '+syncError:(pending?'Ожидают отправки: '+pending:'Синхронизация: проверка завершена');
+ // Keep the overlay completely out of the way when synchronization is healthy.
+ if(!syncError && pending===0){panel.hidden=true;return;}
+ panel.hidden=false;
+ panel.textContent=syncError?'Синхронизация: '+syncError:'Ожидают отправки: '+pending;
  const btn=document.createElement('button');btn.type='button';btn.textContent='Проверить снова';btn.style.cssText='display:block;margin-top:6px;padding:5px 9px;cursor:pointer';
  btn.onclick=async()=>{syncError='';panel.textContent='Проверяю соединение…';await syncDownload();showSyncStatus();};
  panel.appendChild(btn);
