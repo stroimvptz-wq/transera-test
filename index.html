@@ -47,7 +47,7 @@ async function submitLanding(){
   currentUser=result.user||null;
   applyProfileOverrides();
   document.getElementById('landing').hidden=true;
-  page='home';initNavigation();render();
+  page='home';initNavigation();render();void mergeFromServer();
  }catch(e){error.textContent=e instanceof TypeError?'Нет соединения с сервером. Проверьте доступность функции и настройки CORS.':e.message;}
  finally{btn.disabled=false;}
 }
@@ -62,7 +62,7 @@ showLandingTab('login');
 (async()=>{
  const token=localStorage.getItem('transera-auth-token')||sessionStorage.getItem('transera-auth-token');
  if(!token)return;
- try{const data=await apiRequest('/me',null,token);currentUser=data.user;applyProfileOverrides();localStorage.setItem('transera-auth-token',token);sessionStorage.removeItem('transera-auth-token');document.getElementById('landing').hidden=true;page='home';initNavigation();render();}
+ try{const data=await apiRequest('/me',null,token);currentUser=data.user;applyProfileOverrides();localStorage.setItem('transera-auth-token',token);sessionStorage.removeItem('transera-auth-token');document.getElementById('landing').hidden=true;page='home';initNavigation();render();void mergeFromServer();}
  catch(e){if(!(e instanceof TypeError)){localStorage.removeItem('transera-auth-token');sessionStorage.removeItem('transera-auth-token');}}
 })();
 const money=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)||0)+' ₽';
@@ -75,8 +75,65 @@ function calc(d){const distance=num(d.distance),km=distance;const own=(km*num(d.
 function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open('transera-v2',1);req.onupgradeneeded=()=>{const x=req.result;['trips','calculations'].forEach(t=>{if(!x.objectStoreNames.contains(t))x.createObjectStore(t,{keyPath:'id'});});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
 function store(name,mode='readonly'){return db.transaction(name,mode).objectStore(name);}
 function all(name){return new Promise((res,rej)=>{const r=store(name).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
-function put(name,item){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(item);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
-function del(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+// Local-first storage. Server synchronization is enabled only in the isolated review build
+// with ?sync_test=1. Existing live users and local records are left untouched.
+const SYNC_TEST=new URLSearchParams(location.search).get('sync_test')==='1';
+let syncBusy=false;
+function syncIdentity(){return currentUser?.email?.trim().toLowerCase()||'';}
+function syncToken(){return localStorage.getItem('transera-auth-token')||sessionStorage.getItem('transera-auth-token');}
+function syncKey(){return 'transera-sync-pending-v1:'+syncIdentity();}
+function syncQueue(){try{const q=JSON.parse(localStorage.getItem(syncKey())||'[]');return Array.isArray(q)?q:[];}catch{return [];}}
+function queueSync(name,id,action,item){
+ if(!SYNC_TEST||!syncIdentity()||!syncToken())return;
+ const q=syncQueue().filter(x=>!(x.name===name&&x.id===id));
+ q.push({name,id,action,item,queuedAt:new Date().toISOString()});
+ localStorage.setItem(syncKey(),JSON.stringify(q));
+ void runSync();
+}
+function localPut(name,item){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(item);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+function localDel(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=rej=>rej(rej.target.error);});}
+async function put(name,item){await localPut(name,item);queueSync(name,item.id,'save',item);}
+async function del(name,id){await localDel(name,id);queueSync(name,id,'delete',null);}
+async function runSync(){
+ if(!SYNC_TEST||syncBusy||!syncIdentity()||!syncToken()||!db||!navigator.onLine)return;
+ syncBusy=true;
+ const identity=syncIdentity(),token=syncToken();
+ try{
+  for(const entry of syncQueue()){
+   if(syncIdentity()!==identity||syncToken()!==token)break;
+   const route='/'+entry.name+'/'+(entry.action==='save'?'save':'delete');
+   const body=entry.action==='save'?entry.item:{id:entry.id};
+   await apiRequest(route,body,token);
+   // Remove only the exact queued version; newer local edits must not be lost.
+   const q=syncQueue(),idx=q.findIndex(x=>x.name===entry.name&&x.id===entry.id&&x.queuedAt===entry.queuedAt);
+   if(idx!==-1){q.splice(idx,1);localStorage.setItem(syncKey(),JSON.stringify(q));}
+  }
+ }catch(err){console.warn('TRANSERA: sync paused; local data retained',err);}
+ finally{syncBusy=false;}
+}
+async function mergeFromServer(){
+ if(!SYNC_TEST||!syncIdentity()||!syncToken()||!db)return;
+ const identity=syncIdentity(),token=syncToken();
+ await runSync();
+ for(const name of ['trips','calculations']){
+  let result;
+  try{result=await apiRequest('/'+name+'/list',null,token);}
+  catch(err){console.warn('TRANSERA: remote list unavailable',err);return;}
+  if(syncIdentity()!==identity||syncToken()!==token)return;
+  const records=Array.isArray(result)?result:result?.[name]??result?.items??result?.data;
+  if(!Array.isArray(records)){console.warn('TRANSERA: unknown list format',name);return;}
+  const pending=new Set(syncQueue().filter(x=>x.name===name).map(x=>x.id));
+  for(const remote of records){
+   if(!remote||typeof remote.id!=='string'||pending.has(remote.id))continue;
+   const existing=await new Promise((resolve,reject)=>{const req=store(name).get(remote.id);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});
+   // Do not overwrite browser records: existing data may be newer.
+   if(!existing)await localPut(name,remote);
+  }
+ }
+ await refresh();
+}
+window.addEventListener('online',()=>{void runSync();void mergeFromServer();});
+
 async function refresh(){trips=await all('trips');calculations=await all('calculations');render();}
 const field=(key,label,type='number',opts=null)=>'<label>'+label+(opts?'<select data-field="'+key+'">'+opts.map(o=>'<option value="'+esc(o[0])+'" '+(String(draft[key])===String(o[0])?'selected':'')+'>'+esc(o[1])+'</option>').join('')+'</select>':'<input data-field="'+key+'" type="'+(type==='number'?'text':type)+'" '+(type==='number'?'inputmode="decimal" data-numeric="1" autocomplete="off"':'')+' value="'+esc(type==='number'&&Number(draft[key])===0?'':draft[key])+'" placeholder="'+(type==='number'?'0':'')+'">')+'</label>';
 function editor(){const own=draft.mode==='own';return '<div class="card"><h2>Данные перевозки</h2><div class="fields">'+field('mode','Тип транспорта','text',[['own','Собственный транспорт'],['hired','Наёмный перевозчик']])+'<div></div>'+field('from','Откуда','text')+field('distance','Расстояние, км')+field('to','Куда','text')+field('rate','Ставка, ₽/км')+(own?'':field('markup','Наценка, %'))+'</div><div class="section"><h2>'+(own?'Расходы собственного транспорта':'Расходы наёмного перевозчика')+'</h2><div class="fields">'+(own?field('fuelConsumption','Расход топлива, л/100 км')+field('fuelPrice','Цена топлива, ₽/л')+field('driverPay','Зарплата водителя, ₽/км')+field('tolls','Платные дороги, ₽')+field('depreciation','Амортизация, ₽/км'):field('carrierFixed','Стоимость перевозчика за рейс, ₽')+field('carrierRate','Стоимость перевозчика, ₽/км')+field('forwarderCosts','Дополнительные расходы экспедитора, ₽'))+'</div></div></div>';}
@@ -183,5 +240,5 @@ document.addEventListener('change',e=>{if(e.target.dataset.field&&e.target.tagNa
 document.addEventListener('change',e=>{if(e.target.matches('[data-docs-received]')){if(draft.docsReceived!==e.target.checked)markTripChanged();draft.docsReceived=e.target.checked;render();}else if(e.target.dataset.field&&e.target.type==='date'){if(draft[e.target.dataset.field]!==e.target.value)markTripChanged();draft[e.target.dataset.field]=e.target.value;}});
 document.addEventListener('click',async e=>{if(e.target.closest('[data-go-home]')){await goHomeSafely();return;}if(e.target.closest('[data-go-back]')){goBack();return;}const stat=e.target.closest('[data-dashboard-filter]');if(stat){dashboardFilter=stat.dataset.dashboardFilter;statusFilter='Все';search='';tripEditor=false;setPage('trips');return;}const nav=e.target.closest('[data-page]');if(nav){dashboardFilter='';statusFilter='Все';tripEditor=false;setPage(nav.dataset.page);return;}const tab=e.target.closest('[data-tab]');if(tab){calcTab=tab.dataset.tab;render();return;}const btn=e.target.closest('[data-action]');if(!btn)return;const a=btn.dataset.action,id=btn.dataset.id;try{if(a==='clear-dashboard-filter'){dashboardFilter='';statusFilter='Все';search='';render();}else if(a==='add-payment'){const side=btn.dataset.side,amountEl=document.querySelector('[data-payment-amount="'+side+'"]'),dateEl=document.querySelector('[data-payment-date="'+side+'"]');const amount=Number((amountEl?.value||'').replace(',','.'));if(!Number.isFinite(amount)||amount<=0)return alert('Укажите положительную сумму.');if(amount>due(draft,side)+0.009)return alert('Сумма превышает остаток долга.');if(!dateEl?.value)return alert('Укажите дату оплаты.');markTripChanged();draft[side+'Payments']=[...payments(draft,side),{id:uid(),amount,date:dateEl.value}];render();}else if(a==='remove-payment'){const side=btn.dataset.side;const remaining=payments(draft,side).filter(p=>p.id!==id);if(remaining.length===payments(draft,side).length)return;markTripChanged();draft[side+'Payments']=remaining;render();}else if(a==='close-trip'){if(!editing)return alert('Сначала сохраните рейс кнопкой «Сохранить рейс».');const missing=closeReadiness(draft);if(missing.length){alert('Рейс пока нельзя закрыть. Осталось выполнить:\n'+missing.join('\n'));return;}if(!confirm('Подтвердить доставку груза и полностью закрыть рейс?'))return;draft.status='Закрыт';draft.closedAt=new Date().toISOString();const old=trips.find(t=>t.id===editing);await put('trips',{...draft,id:editing,number:old?.number||draft.number,createdAt:old?.createdAt||draft.createdAt});tripEditor=false;editing=null;page='dashboard';await refresh();}else if(a==='save-calc'){await put('calculations',{...draft,id:uid(),createdAt:new Date().toISOString()});await refresh();}else if(a==='load-calc'){const c=calculations.find(c=>c.id===id);if(!c)return;selectedCalcId=id;draft={...defaults(),...c};render();document.querySelector('.saved-calc-actions')?.scrollIntoView({behavior:'smooth',block:'nearest'});}else if(a==='trip-from-saved-calc'){const c=calculations.find(c=>c.id===id);if(!c)return;draft={...defaults(),...c};delete draft.id;delete draft.createdAt;selectedCalcId=null;editing=null;tripEditMode=true;dashboardFilter='';statusFilter='Все';tripEditor=true;page='trips';pushNavigation();render();}else if(a==='delete-calc'){if(confirm('Удалить расчёт?')){await del('calculations',id);if(selectedCalcId===id)selectedCalcId=null;await refresh();}}else if(a==='new-trip'||a==='blank-trip'){if(a==='blank-trip')draft=defaults();editing=null;tripEditMode=true;tripEditor=true;page='trips';pushNavigation();render();}else if(a==='edit-trip'){tripEditMode=false;const trip=trips.find(t=>String(t.id)===String(id));if(!trip)return alert('Рейс не найден.');draft={...defaults(),...trip};editing=trip.id;dashboardFilter='';statusFilter='Все';page='trips';tripEditor=true;pushNavigation();render();}else if(a==='begin-trip-edit'){tripEditMode=true;markTripChanged();render();document.querySelector('[data-field="client"]')?.focus();}else if(a==='save-trip'){if(editing&&!tripEditMode)return alert('Сначала нажмите «Внести изменения».');if(!draft.from.trim()||!draft.to.trim())return alert('Укажите пункты отправления и назначения.');if(editing&&normalizeStatus(trips.find(t=>t.id===editing)||{})==='Закрыт'&&draft.status==='Доставлен'&&canClose(draft)){draft.status='Закрыт';draft.closedAt=new Date().toISOString();}if(draft.status==='Закрыт'&&!canClose(draft))return alert('Рейс нельзя закрыть без документов и полной оплаты.');if(draft.status!=='Закрыт')delete draft.closedAt;const old=trips.find(t=>t.id===editing);const id2=editing||uid();await put('trips',{...draft,id:id2,number:old?.number||'ТР-'+String(Date.now()).slice(-8),createdAt:old?.createdAt||new Date().toISOString()});tripEditor=false;editing=null;tripEditMode=false;await refresh();}else if(a==='cancel-trip'){tripEditor=false;editing=null;render();}else if(a==='delete-trip'){if(confirm('Вы действительно хотите удалить этот рейс? Это действие нельзя отменить.')){await del('trips',id);tripEditor=false;editing=null;await refresh();}}else if(a==='export'){const data=JSON.stringify({version:1,exportedAt:new Date().toISOString(),trips,calculations},null,2);const blob=new Blob([data],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='transera-backup-'+new Date().toISOString().slice(0,10)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}catch(err){alert('Ошибка сохранения: '+err.message);}});
 async function importJSON(file){try{const data=JSON.parse(await file.text());if(!Array.isArray(data.trips)||!Array.isArray(data.calculations)||data.version!==1)throw Error('Неверный формат резервной копии');if(!confirm('Импорт добавит записи в базу и заменит записи с совпадающими ID. Продолжить?'))return;for(const [name,items] of [['trips',data.trips],['calculations',data.calculations]])for(const item of items){if(!item||typeof item.id!=='string'||typeof item.mode!=='string')throw Error('Некорректная запись');await put(name,item);}await refresh();alert('Импорт завершён');}catch(err){alert('Ошибка импорта: '+err.message);}}
-openDB().then(x=>{db=x;refresh();}).catch(err=>{document.getElementById('content').innerHTML='<div class="card"><h1>Не удалось открыть базу данных</h1><p>'+esc(err.message)+'</p><p>Проверьте разрешения браузера и режим приватного просмотра.</p></div>';});
+openDB().then(x=>{db=x;refresh().then(()=>mergeFromServer());}).catch(err=>{document.getElementById('content').innerHTML='<div class="card"><h1>Не удалось открыть базу данных</h1><p>'+esc(err.message)+'</p><p>Проверьте разрешения браузера и режим приватного просмотра.</p></div>';});
 </script></body></html>
