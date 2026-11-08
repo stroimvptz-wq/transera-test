@@ -129,7 +129,7 @@ async function syncNow(){
  try{
   for(const entry of syncRead('queue')){
    if(account!==syncAccount()||token!==syncToken())break;
-   await apiRequest('/'+entry.name+'/'+entry.action,entry.action==='save'?entry.item:{id:entry.id},token);
+   await apiRequest('/'+entry.name+'/'+entry.action,entry.action==='save'?{id:entry.id,data:entry.item}:{id:entry.id},token);
    if(account!==syncAccount())break;
    syncWrite('queue',syncRead('queue').filter(x=>x.nonce!==entry.nonce));
   }
