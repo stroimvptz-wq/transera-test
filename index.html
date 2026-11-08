@@ -38,7 +38,8 @@ async function submitLanding(){
   if(landingTab==='register'){payload.full_name=get('full_name').trim();payload.organization=get('organization').trim();}
   const result=await apiRequest(landingTab==='register'?'/register':'/login',payload);
   if(!result.token)throw Error('Сервер не вернул токен');
-  sessionStorage.setItem('transera-auth-token',result.token);
+  localStorage.setItem('transera-auth-token',result.token);
+  sessionStorage.removeItem('transera-auth-token');
   currentUser=result.user||null;
   document.getElementById('landing').hidden=true;
   page='dashboard';render();
@@ -49,15 +50,15 @@ document.addEventListener('click',e=>{
  const tab=e.target.closest('[data-landing-tab]');
  if(tab){showLandingTab(tab.dataset.landingTab);return;}
  if(e.target.closest('[data-landing-preview]')){submitLanding();return;}
- if(e.target.closest('[data-landing-logout]')){sessionStorage.removeItem('transera-auth-token');currentUser=null;document.getElementById('landing').hidden=false;showLandingTab('login');return;}
+ if(e.target.closest('[data-landing-logout]')){localStorage.removeItem('transera-auth-token');sessionStorage.removeItem('transera-auth-token');currentUser=null;document.getElementById('landing').hidden=false;showLandingTab('login');return;}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('#landing-fields')){e.preventDefault();submitLanding();}});
 showLandingTab('login');
 (async()=>{
- const token=sessionStorage.getItem('transera-auth-token');
+ const token=localStorage.getItem('transera-auth-token')||sessionStorage.getItem('transera-auth-token');
  if(!token)return;
- try{const data=await apiRequest('/me',null,token);currentUser=data.user;document.getElementById('landing').hidden=true;}
- catch{sessionStorage.removeItem('transera-auth-token');}
+ try{const data=await apiRequest('/me',null,token);currentUser=data.user;localStorage.setItem('transera-auth-token',token);sessionStorage.removeItem('transera-auth-token');document.getElementById('landing').hidden=true;}
+ catch(e){if(!(e instanceof TypeError)){localStorage.removeItem('transera-auth-token');sessionStorage.removeItem('transera-auth-token');}}
 })();
 const money=n=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)||0)+' ₽';
 const num=v=>Math.max(0,Number(v)||0);
