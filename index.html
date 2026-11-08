@@ -91,7 +91,7 @@ function queueSync(name,id,action,item){
  void runSync();
 }
 function localPut(name,item){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(item);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
-function localDel(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=rej=>rej(rej.target.error);});}
+function localDel(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
 async function put(name,item){await localPut(name,item);queueSync(name,item.id,'save',item);}
 async function del(name,id){await localDel(name,id);queueSync(name,id,'delete',null);}
 async function runSync(){
