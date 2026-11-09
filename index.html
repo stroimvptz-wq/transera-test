@@ -61,7 +61,44 @@ input:not(:disabled):not([readonly]):not([type="hidden"]):not([type="checkbox"])
 
 </style></head><body><section id="landing" class="landing" aria-label="Стартовая страница Business AI"><div class="landing-grid"><div><div class="landing-brand">Business <span>AI</span></div><div class="landing-intro">Платформа для управления бизнесом</div><div class="landing-feature"><b>▦</b><span>Расчёты, финансы и контроль прибыли</span></div><div class="landing-feature"><b>☁</b><span>Облачное хранение данных</span></div><div class="landing-feature"><b>▣</b><span>Работа на компьютере и телефоне</span></div></div><div class="landing-card"><div class="landing-tabs"><button type="button" class="active" data-landing-tab="login">Вход</button><button type="button" data-landing-tab="register">Регистрация</button></div><h2 id="landing-title">Вход в Business AI</h2><p id="landing-subtitle">Вход в личный кабинет</p><div id="landing-fields"><label>Электронная почта<input type="email" placeholder="example@mail.ru" autocomplete="email" required></label><label>Пароль<input type="password" placeholder="Пароль" autocomplete="current-password" required></label></div><p class="landing-password-hint" style="font-size:12px;color:#a9bfd1;margin:9px 0 3px;line-height:1.5">Пароль должен содержать не менее 10 символов.</p><div class="landing-links"><button type="button" data-landing-tab="recover">Забыли пароль?</button></div><button type="button" class="btn" data-landing-preview>Войти</button><p id="landing-error" role="alert" style="color:#ffb9b9;white-space:pre-wrap"></p></div></div></section><div class="app"><aside class="sidebar" aria-label="Место для будущей рекламы"><div class="brand">Business <span>AI</span></div><div id="sidebar-stats" class="sidebar-stats"></div></aside><main class="main"><div id="content"></div><div id="exit-hint" role="status" aria-live="polite"></div></main></div>
 <script>
-const API_URL='https://functions.yandexcloud.net/d4emctueu2poauh119et';
+// TEST ONLY: configure isolated test Cloud Functions before testing accounts.
+const API_URL='';
+const PASSWORD_RESET_API_URL='';
+const IDLE_LIMIT_MS=30*60*1000;
+const SESSION_MAX_MS=12*60*60*1000;
+let sessionStartedAt=0;
+let lastActivityAt=Date.now();
+function authTestConfigured(){return Boolean(API_URL&&PASSWORD_RESET_API_URL);}
+function resetTestError(){return 'Тестовые функции Yandex Cloud пока не подключены. Рабочая база не используется.';}
+async function resetApi(route,payload){
+ if(!PASSWORD_RESET_API_URL)throw Error(resetTestError());
+ const response=await fetch(PASSWORD_RESET_API_URL+'?route='+encodeURIComponent(route),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||'Ошибка сервера ('+response.status+')');
+ return data;
+}
+function endIdleSession(){
+ sessionStorage.removeItem('transera-auth-token');
+ localStorage.removeItem('transera-auth-token');
+ currentUser=null;sessionStartedAt=0;
+ document.getElementById('landing').hidden=false;
+ showLandingTab('login');
+ document.getElementById('landing-error').textContent='Сеанс завершён. Войдите снова.';
+}
+function noteAuthActivity(){
+ if(!currentUser)return;
+ const now=Date.now();
+ if(now-lastActivityAt>=IDLE_LIMIT_MS||now-sessionStartedAt>=SESSION_MAX_MS){endIdleSession();return;}
+ lastActivityAt=now;
+}
+['pointerdown','keydown','touchstart'].forEach(name=>document.addEventListener(name,noteAuthActivity,{passive:true}));
+setInterval(()=>{if(currentUser&&(Date.now()-lastActivityAt>=IDLE_LIMIT_MS||Date.now()-sessionStartedAt>=SESSION_MAX_MS))endIdleSession();},15000);
+function initialResetToken(){
+ const match=/^#reset_token=([a-f0-9]{64})$/.exec(location.hash);
+ return match?.[1]||'';
+}
+let pendingResetToken=initialResetToken();
+
 let landingTab='login';
 let currentUser=null;
 let editingProfile=false;
@@ -69,7 +106,7 @@ function profileKey(){return 'transera-profile-'+(currentUser?.email||'').toLowe
 function applyProfileOverrides(){if(!currentUser?.email)return;try{const saved=JSON.parse(localStorage.getItem(profileKey())||'null');if(saved&&typeof saved==='object'){currentUser={...currentUser,full_name:saved.full_name??currentUser.full_name,organization:saved.organization??currentUser.organization};}}catch{}}
 
 function showLandingTab(tab){
-  if(tab==='recover'){document.getElementById('landing-error').textContent='Восстановление пароля пока не подключено. Для помощи обратитесь к администратору.';return;}
+  if(tab==='recover'||tab==='reset'){landingTab=tab;document.querySelectorAll('[data-landing-tab]').forEach(b=>b.classList.toggle('active',b.dataset.landingTab===tab));document.getElementById('landing-title').textContent=tab==='reset'?'Новый пароль':'Восстановление пароля';document.getElementById('landing-subtitle').textContent=tab==='reset'?'Введите новый пароль дважды':'Укажите адрес электронной почты';document.getElementById('landing-fields').innerHTML=tab==='reset'?'<label>Новый пароль<input name="password" type="password" autocomplete="new-password" required></label><label>Повторите пароль<input name="confirm" type="password" autocomplete="new-password" required></label>':'<label>Электронная почта<input name="email" type="email" autocomplete="email" required></label>';document.querySelector('[data-landing-preview]').textContent=tab==='reset'?'Сменить пароль':'Отправить письмо';document.getElementById('landing-error').textContent='';return;}
   landingTab=tab;
   document.querySelectorAll('[data-landing-tab]').forEach(b=>b.classList.toggle('active',b.dataset.landingTab===tab));
   document.getElementById('landing-title').textContent=tab==='register'?'Регистрация':'Вход в Business AI';
@@ -80,6 +117,7 @@ function showLandingTab(tab){
   document.getElementById('landing-error').textContent='';
 }
 async function apiRequest(path,body,token){
+ if(!API_URL)throw Error(resetTestError());
  const res=await fetch(API_URL+'?route='+encodeURIComponent(path),{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{'X-TRANSERA-Token':'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});
  const data=await res.json().catch(()=>({}));
  if(!res.ok)throw Error(data.error||'Ошибка сервера ('+res.status+')');
@@ -91,6 +129,24 @@ async function submitLanding(){
  const get=name=>fields.querySelector('[name="'+name+'"]')?.value||'';
  const email=get('email').trim(),password=get('password');
  error.textContent='';
+ if(landingTab==='recover'||landingTab==='reset'){
+  btn.disabled=true;
+  try{
+   if(landingTab==='recover'){
+    if(!email||!email.includes('@'))throw Error('Укажите корректную почту.');
+    await resetApi('/request',{email});
+    error.textContent='Если адрес зарегистрирован, письмо будет отправлено.';
+   }else{
+    if(!pendingResetToken)throw Error('Ссылка недействительна. Запросите новую.');
+    if(password.length<10||password!==get('confirm'))throw Error('Пароль должен быть не короче 10 символов, оба поля должны совпадать.');
+    await resetApi('/reset',{token:pendingResetToken,password});
+    pendingResetToken='';history.replaceState(null,'',location.pathname+location.search);
+    showLandingTab('login');error.textContent='Пароль изменён. Войдите с новым паролем.';
+   }
+  }catch(e){error.textContent=e.message||'Ошибка восстановления пароля';}
+  finally{btn.disabled=false;}
+  return;
+ }
  if(!email||!email.includes('@')||password.length<10){error.textContent='Укажите почту и пароль не короче 10 символов.';return;}
  if(landingTab==='register'&&password!==get('confirm')){error.textContent='Пароли не совпадают.';return;}
  btn.disabled=true;
@@ -102,6 +158,7 @@ async function submitLanding(){
   localStorage.removeItem('transera-auth-token');
   sessionStorage.setItem('transera-auth-token',result.token);
   currentUser=result.user||null;
+  sessionStartedAt=Date.now();lastActivityAt=sessionStartedAt;
   applyProfileOverrides();
   document.getElementById('landing').hidden=true;
   page='home';transeraAccess={state:'checking',subscription:null};initNavigation();render();void transeraRefreshAccess();void syncDownload();
@@ -117,7 +174,7 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-landing-logout]')){localStorage.removeItem('transera-auth-token');sessionStorage.removeItem('transera-auth-token');currentUser=null;document.getElementById('landing').hidden=false;showLandingTab('login');return;}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('#landing-fields')){e.preventDefault();submitLanding();}});
-showLandingTab('login');
+showLandingTab(pendingResetToken?'reset':'login');
 // Require a fresh login whenever the page is opened or reloaded.
 localStorage.removeItem('transera-auth-token');
 sessionStorage.removeItem('transera-auth-token');
