@@ -1,7 +1,7 @@
 /* Email password recovery. Tokens stay in memory and never enter local storage. */
 'use strict';
 (()=>{
- const RESET_API='https://functions.yandexcloud.net/d4e9regg2l0vqhr48ka4';
+ const RESET_API=window.BUSINESS_PLATFORM.reset;
  const originalTab=showLandingTab,originalSubmit=submitLanding;
  let resetToken='',requestBusy=false,viewVersion=0;
  const node=id=>document.getElementById(id);
@@ -27,7 +27,7 @@
  async function resetRequest(route,body){
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),30000);
   try{
-   const response=await fetch(RESET_API+'?route='+encodeURIComponent(route),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:controller.signal});
+   const response=await fetch(RESET_API+'?route='+encodeURIComponent(route),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,returnUrl:new URL('./',location.href).href}),credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:controller.signal});
    const data=await response.json().catch(()=>null);
    if(!response.ok){if(response.status===400)throw Error(route==='/reset'?'Ссылка недействительна, уже использована или истекла. Запросите новое письмо.':'Проверьте адрес электронной почты.');throw Error('Не удалось выполнить запрос. Попробуйте позже.');}
    if(data?.ok!==true)throw Error('Сервер не подтвердил выполнение запроса. Попробуйте позже.');
@@ -55,7 +55,7 @@
    await resetRequest(route,body);if(version!==viewVersion)return;
    if(tab==='recover'){status('Если этот адрес зарегистрирован, письмо со ссылкой будет отправлено. Проверьте также папку «Спам». Ссылка действует 15 минут.');}
    else{
-    resetToken='';localStorage.removeItem('transera-auth-token');sessionStorage.removeItem('transera-auth-token');currentUser=null;
+    resetToken='';localStorage.removeItem('business-ai-test2-auth-token');sessionStorage.removeItem('business-ai-test2-auth-token');currentUser=null;
     showLandingTab('login');status('Пароль изменён. Войдите с новым паролем.');node('landing-fields').querySelector('[name="email"]')?.focus();
    }
   }catch(e){if(version===viewVersion)error.textContent=e.name==='AbortError'?'Сервер не ответил вовремя. Попробуйте ещё раз.':e instanceof TypeError?'Нет соединения с сервером. Проверьте интернет и повторите попытку.':e.message;}
