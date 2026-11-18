@@ -149,7 +149,7 @@ async function submitLanding(){
   applyProfileOverrides();
   page='home';transeraAccess={state:'checking',subscription:null};initNavigation();const destination=window.BUSINESS_ACCESS?.destination?.();if(destination&&destination!=='home'){page=destination;pushNavigation();}render();
   document.getElementById('landing').hidden=true;void transeraRefreshAccess();void syncDownload();
- }catch(e){error.textContent=e instanceof TypeError?'Нет соединения с сервером. Проверьте доступность функции и настройки CORS.':e.message;}
+ }catch(e){error.textContent=e instanceof TypeError?'Нет соединения с сервером. Повторите через несколько минут.':e.message;}
  finally{btn.disabled=false;}
 }
 document.addEventListener('click',e=>{
