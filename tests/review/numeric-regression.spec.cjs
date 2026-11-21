@@ -3,17 +3,17 @@ const { test, expect } = require('playwright/test');
 test.beforeEach(async ({ page }) => {
   await page.route('https://functions.yandexcloud.net/**',route=>route.fulfill({json:{ok:true,user:{email:'browser-tests@example.test',full_name:'Проверка'},verified:true,subscription:{active:true}}}));
   await page.addInitScript(()=>sessionStorage.setItem('business-start-entered','true'));await page.goto('/');
-  await page.waitForFunction(()=>typeof db!=='undefined'&&db&&document.querySelector('.champagne-menu'));
+  await page.waitForFunction(()=>typeof db!=='undefined'&&db&&document.querySelector('.unified-grid'));
   await page.evaluate(()=>{document.getElementById('landing').hidden=true;sessionStorage.setItem('business-ai-test2-auth-token','isolated-fixture');currentUser={email:'browser-tests@example.test',full_name:'Проверка'};transeraAccess={state:'active'};page='home';render();});
 });
 test('digits append and Backspace works in current calculator fields',async({page})=>{
-  await page.locator('.champagne-tile[data-page="business"]').click();await page.locator('.champagne-tile[data-page="transport"]').click();await page.locator('.champagne-tile[data-page="trips"]').click();
+  await page.locator('.unified-grid [data-unified-tool="business"]').click();await page.locator('.champagne-tile[data-page="transport"]').click();await page.locator('.champagne-tile[data-page="trips"]').click();
   for(const key of ['distance','rate','markup','forwarderCosts']){
     const input=page.locator('[data-field="'+key+'"]');await input.fill('');await input.pressSequentially('1234');await expect(input).toHaveValue('1234');await input.press('Backspace');await expect(input).toHaveValue('123');
   }
 });
 test('calculation updates while focus stays on the active field',async({page})=>{
- await page.locator('.champagne-tile[data-page="business"]').click();await page.locator('.champagne-tile[data-page="transport"]').click();await page.locator('.champagne-tile[data-page="trips"]').click();
+ await page.locator('.unified-grid [data-unified-tool="business"]').click();await page.locator('.champagne-tile[data-page="transport"]').click();await page.locator('.champagne-tile[data-page="trips"]').click();
  const distance=page.locator('[data-field="distance"]');await distance.fill('');await distance.pressSequentially('1000');await expect(distance).toHaveValue('1000');await expect(distance).toBeFocused();
  const rate=page.locator('[data-field="rate"]');await rate.fill('');await rate.pressSequentially('50');await expect(rate).toHaveValue('50');await expect(page.locator('#live-results')).toContainText(/50\s000/);
 });
