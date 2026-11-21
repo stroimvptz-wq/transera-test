@@ -15,7 +15,7 @@
   const hint=status?.nextElementSibling;if(hint?.classList.contains('panel-hint'))hint.remove();destination.append(promo);if(status)destination.append(status);
   const tabs=document.querySelector('.champagne-account-tabs');if(tabs){const b=tabs.querySelector('[data-account-tab=subscription]');if(b)b.textContent='Подписка и AI-баланс';}
   if(history.state?.accountSection==='ai-balance')document.querySelector('[data-account-tab=subscription]')?.click();
-  const mail=document.getElementById('account-mail');if(mail){mail.querySelector('.panel-body > p').textContent='Подтверждение адреса и подключение отправки — два разных шага. Уже подтверждённый адрес не нужно подтверждать повторно.';}
+  const mail=document.getElementById('account-mail');if(mail){mail.querySelector('.panel-body > p').textContent='Уже подтверждённый адрес не нужно подтверждать повторно.';}
  }
  document.addEventListener('click',e=>{if(e.target.closest('[data-account-topup]')){const options=document.querySelector('[data-account-topup-options]');if(options)options.hidden=!options.hidden;}});
  const previous=render;render=function(){previous();arrange();};arrange();
