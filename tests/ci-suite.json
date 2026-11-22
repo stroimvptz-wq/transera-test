@@ -1,5 +1,5 @@
 {
-  "suiteSha256": "346f9f853fd344b7d99f92ed90469bac7c901ea90af16fcc99e3c2d595710008",
+  "suiteSha256": "627f8e94339d5986e7413807a09edfe1838be55025b18b0b17eb0071797a9768",
   "files": {
     ".github/workflows/browser-tests.yml": "6af7e4c7e03ef39dc35e29d7e5d172946d18dbad6c48bfa9d02ab47a44551cb2",
     ".github/workflows/deploy.yml": "82edf6352f1da86e05bc29b5d6c6f45c53b9d8668f69f9ab64cbeb28bdc75621",
@@ -21,6 +21,7 @@
     "tests/review/home-menu.spec.cjs": "3d9fcdc698e35464a64f2d59f279eacb277beecd78657b6f7a5211d4b60aeade",
     "tests/review/layout.spec.cjs": "78df116db19d48b74fd28e363026c638bed927108dfa6c9526e8d83efa740cd0",
     "tests/review/login-route.spec.cjs": "d76ae6e081283c737f0a097a1d7796f249ece7d76de96be77b53fe5117dd814a",
+    "tests/review/music-labels.spec.cjs": "9803904df0f41db8231027faf745fa04f1b56edbade57d142b0f98802b0b7d97",
     "tests/review/music-recovery.spec.cjs": "b1b633d91a14c1a82bff941ebeff4133a8a53b1716c01d5fe0c5cd108e91f42c",
     "tests/review/navigation.cjs": "ce3818d4100c95acf326cdf25cb6df5d8564698fb103a9b3dd3fb7dc1fac7f55",
     "tests/review/new-features.spec.cjs": "797a088f84ea32774f8a3e976ea75b6be5fc0778f49e1bccfb21463ac695f7e9",
@@ -34,7 +35,7 @@
     "tests/review/tariff-return.spec.cjs": "55788589f5770aa1848b016c4d5ae98a09344fe732aaf274e60adeab756c62bc",
     "tests/review/three-image-models.spec.cjs": "d620995b74e392404187a64379b56e54fcdca8b010cebaaa26505185c5bedbdb",
     "tests/review/unified-menu.spec.cjs": "13a7c489578f9d3d92085a23d4082478d4c3d9efe351f12ba5e226d90d00818c",
-    "tests/review/video-music-fix.spec.cjs": "d5d42d44b4f7c9d0e13ec21402836d9cf8f4bcdd8246e0d965315cff8817f590",
+    "tests/review/video-music-fix.spec.cjs": "d739ded1d72dd4eb1e3900856bb261a746400074c54d75212e8c94c03aec1780",
     "tests/review/workspace-update.spec.cjs": "d87060fc1fe845aabc23c4fb707b7088b87ef0bf4e795fe985b7c10df3bca8e3",
     "tests/site-contract.test.cjs": "23c1f8288e13d6164b6786059ffdc88d979286b7cf307cb0da030d385b8a4b4f"
   }
