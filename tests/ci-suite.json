@@ -1,5 +1,5 @@
 {
-  "suiteSha256": "627f8e94339d5986e7413807a09edfe1838be55025b18b0b17eb0071797a9768",
+  "suiteSha256": "42f2168cf06f9407bdf34f98574f98b222fd169b89fe9c23d7f97aab986593f8",
   "files": {
     ".github/workflows/browser-tests.yml": "6af7e4c7e03ef39dc35e29d7e5d172946d18dbad6c48bfa9d02ab47a44551cb2",
     ".github/workflows/deploy.yml": "82edf6352f1da86e05bc29b5d6c6f45c53b9d8668f69f9ab64cbeb28bdc75621",
@@ -9,6 +9,7 @@
     "tests/review/animate-tool.spec.cjs": "b77fd46fd6402f3eda4abfe4800406f5606e43272da0cb537518222382f6a9ab",
     "tests/review/audio-options.json": "e9ab649b9491fd507e6073ba9b94e48575e8f084f40416e1f72ade04fb5da28c",
     "tests/review/audio-routing.spec.cjs": "e4b3f844b0ac33f238405414c085c04243ff44b8e4d49990700637f59576728e",
+    "tests/review/audit-fixes.spec.cjs": "cd712d66b30760b2e793d0a597acb44694b63f1593b89ad21e5a4e6c8da590e2",
     "tests/review/autosave-home.spec.cjs": "26d4aed0e3121bf5d65596bced8d0e76effc9f988f7f6acb57312870db27d05d",
     "tests/review/chat-model-isolation.spec.cjs": "3225260734324697bc21067aebd56c4aa8195e412d890f84be9ce25d97b60f63",
     "tests/review/chat-photo-input.spec.cjs": "3c14f1d7181ab69453502c20e2f4b6cce4aaa1d10a531e26e1d145284a350e59",
@@ -16,7 +17,7 @@
     "tests/review/completion.spec.cjs": "364b9437deca524c83d5fb863b36fe484fbcaa344d52f82e48a1f35c5d27d272",
     "tests/review/document-preview.spec.cjs": "c6f649aa451f3862a846b321065765618a9d6a410cd079584d14d086dca245ec",
     "tests/review/features.spec.cjs": "8331c931943155afd0af0a8b2d79e05e5952ce5f691a6c3e37bb956ce2585566",
-    "tests/review/final-delivery.spec.cjs": "21d7bf03973f59945ae610a758c41413815c717862d3f6199cb8b2ce1592c8be",
+    "tests/review/final-delivery.spec.cjs": "773f6e670f2b59a1df9fc6f6b6a0308df3128116c90e863a09654f84947bd3d6",
     "tests/review/final-options.json": "fdcf511a5300dc89138d54178915913aeaba24a48eb3a076a51a72e06a54958f",
     "tests/review/home-menu.spec.cjs": "3d9fcdc698e35464a64f2d59f279eacb277beecd78657b6f7a5211d4b60aeade",
     "tests/review/layout.spec.cjs": "78df116db19d48b74fd28e363026c638bed927108dfa6c9526e8d83efa740cd0",
@@ -29,13 +30,14 @@
     "tests/review/persistent-workspace.spec.cjs": "acb9e28df4a4dcb1f198b290c28276c36f6c61e6f05f5cd44d39196a291db4cd",
     "tests/review/photo.spec.cjs": "2da10da5e2b8b17323161ba2ca4299c1f5b1a51f29ef72528d5afd4ec6f4fe55",
     "tests/review/platform.spec.cjs": "3f7a8b727a8d655f465d12b1c22ee9306ce0f7f4c776968886f2d3f800e9724f",
-    "tests/review/policy-pricing.spec.cjs": "250b9f270fe9465de32c2e3188c97c31289c42d79ed095012efa215eb65d7db9",
+    "tests/review/policy-pricing.spec.cjs": "5a727ac44116eaa3549fca326b6055ec47393afcb85b35cd1324ef87227cd99c",
     "tests/review/restored-audio.spec.cjs": "30dc2560dca8fa1c934f0993cdb17e4780a4e8a279130aade94c38c7e734a456",
     "tests/review/review-options.json": "533a58bb0b6dda226f286605353c75ff959ec6ef73425323839f139c707a2be0",
     "tests/review/tariff-return.spec.cjs": "55788589f5770aa1848b016c4d5ae98a09344fe732aaf274e60adeab756c62bc",
     "tests/review/three-image-models.spec.cjs": "d620995b74e392404187a64379b56e54fcdca8b010cebaaa26505185c5bedbdb",
     "tests/review/unified-menu.spec.cjs": "13a7c489578f9d3d92085a23d4082478d4c3d9efe351f12ba5e226d90d00818c",
     "tests/review/video-music-fix.spec.cjs": "d739ded1d72dd4eb1e3900856bb261a746400074c54d75212e8c94c03aec1780",
+    "tests/review/voice-song-descriptions.spec.cjs": "0f11c74ceb1ffd087161dc4f3cea7d5f83204b424e8ad81cff268faf7fbfd45d",
     "tests/review/workspace-update.spec.cjs": "d87060fc1fe845aabc23c4fb707b7088b87ef0bf4e795fe985b7c10df3bca8e3",
     "tests/site-contract.test.cjs": "23c1f8288e13d6164b6786059ffdc88d979286b7cf307cb0da030d385b8a4b4f"
   }
